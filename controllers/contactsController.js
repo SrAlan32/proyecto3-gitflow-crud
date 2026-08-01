@@ -33,3 +33,29 @@ function getContactById(req, res) {
 }
 module.exports.getAllContacts = getAllContacts;
 module.exports.getContactById = getContactById;
+
+function updateContact(req, res) {
+  const contacts = readContacts();
+  const index = contacts.findIndex(c => c.id === req.params.id);
+  if (index === -1) return res.status(404).json({ error: 'Contacto no encontrado' });
+  const { name, phone, email } = req.body;
+  contacts[index] = {
+    ...contacts[index],
+    name: name !== undefined ? name : contacts[index].name,
+    phone: phone !== undefined ? phone : contacts[index].phone,
+    email: email !== undefined ? email : contacts[index].email
+  };
+  writeContacts(contacts);
+  res.json(contacts[index]);
+}
+
+function deleteContact(req, res) {
+  const contacts = readContacts();
+  const index = contacts.findIndex(c => c.id === req.params.id);
+  if (index === -1) return res.status(404).json({ error: 'Contacto no encontrado' });
+  const deleted = contacts.splice(index, 1);
+  writeContacts(contacts);
+  res.json(deleted[0]);
+}
+module.exports.updateContact = updateContact;
+module.exports.deleteContact = deleteContact;
