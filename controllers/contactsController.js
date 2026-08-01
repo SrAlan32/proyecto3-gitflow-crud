@@ -22,3 +22,14 @@ function createContact(req, res) {
 }
 
 module.exports = { createContact, readContacts, writeContacts };
+
+function getAllContacts(req, res) {
+  res.json(readContacts());
+}
+function getContactById(req, res) {
+  const contact = readContacts().find(c => c.id === req.params.id);
+  if (!contact) return res.status(404).json({ error: 'Contacto no encontrado' });
+  res.json(contact);
+}
+module.exports.getAllContacts = getAllContacts;
+module.exports.getContactById = getContactById;
