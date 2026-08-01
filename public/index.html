@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lista de Contactos</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: #f4f5f7;
+    margin: 0;
+    padding: 2rem;
+    color: #222;
+  }
+  .container { max-width: 720px; margin: 0 auto; }
+  h1 { font-size: 1.5rem; margin-bottom: 1.25rem; }
+  form {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr auto;
+    gap: 0.5rem;
+    background: #fff;
+    padding: 1rem;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    margin-bottom: 1.5rem;
+  }
+  input {
+    padding: 0.55rem 0.6rem;
+    border: 1px solid #d0d3d9;
+    border-radius: 6px;
+    font-size: 0.9rem;
+  }
+  button {
+    background: #2563eb;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 0.55rem 1rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+  }
+  button:hover { background: #1d4ed8; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  }
+  th, td {
+    text-align: left;
+    padding: 0.65rem 0.75rem;
+    border-bottom: 1px solid #eee;
+    font-size: 0.9rem;
+  }
+  th { background: #fafafa; }
+  td.actions { white-space: nowrap; }
+  td.actions button {
+    background: transparent;
+    color: #2563eb;
+    padding: 0.25rem 0.4rem;
+    font-size: 0.85rem;
+  }
+  td.actions button.delete { color: #dc2626; }
+  #empty { padding: 1rem; text-align: center; color: #888; }
+  #error { color: #dc2626; font-size: 0.85rem; margin-bottom: 0.75rem; min-height: 1.1em; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>📇 Lista de Contactos</h1>
+
+  <div id="error"></div>
+
+  <form id="contact-form">
+    <input type="text" id="name" placeholder="Nombre" required>
+    <input type="text" id="phone" placeholder="Teléfono">
+    <input type="email" id="email" placeholder="Email">
+    <button type="submit" id="submit-btn">Agregar</button>
+  </form>
+
+  <table>
+    <thead>
+      <tr><th>Nombre</th><th>Teléfono</th><th>Email</th><th>Acciones</th></tr>
+    </thead>
+    <tbody id="contacts-body"></tbody>
+  </table>
+  <div id="empty" style="display:none;">No hay contactos todavía.</div>
+</div>
+
+<script>
+  const form = document.getElementById('contact-form');
+  const nameInput = document.getElementById('name');
+  const phoneInput = document.getElementById('phone');
+  const emailInput = document.getElementById('email');
+  const submitBtn = document.getElementById('submit-btn');
+  const tbody = document.getElementById('contacts-body');
+  const emptyMsg = document.getElementById('empty');
+  const errorBox = document.getElementById('error');
+
+  let editingId = null;
+
+  async function loadContacts() {
+    errorBox.textContent = '';
+    const res = await fetch('/contacts');
+    const contacts = await res.json();
+    renderContacts(contacts);
+  }
+
+  function renderContacts(contacts) {
+    tbody.innerHTML = '';
+    emptyMsg.style.display = contacts.length ? 'none' : 'block';
+    contacts.forEach(c => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${escapeHtml(c.name)}</td>
+        <td>${escapeHtml(c.phone || '')}</td>
+        <td>${escapeHtml(c.email || '')}</td>
+        <td class="actions">
+          <button data-action="edit" data-id="${c.id}">Editar</button>
+          <button data-action="delete" data-id="${c.id}" class="delete">Eliminar</button>
+        </td>`;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    errorBox.textContent = '';
+
+    const payload = {
+      name: nameInput.value.trim(),
+      phone: phoneInput.value.trim(),
+      email: emailInput.value.trim()
+    };
+
+    const url = editingId ? `/contacts/${editingId}` : '/contacts';
+    const method = editingId ? 'PUT' : 'POST';
+
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      errorBox.textContent = data.error || 'Ocurrió un error.';
+      return;
+    }
+
+    resetForm();
+    loadContacts();
+  });
+
+  tbody.addEventListener('click', async (e) => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    const id = btn.dataset.id;
+
+    if (btn.dataset.action === 'delete') {
+      if (!confirm('¿Eliminar este contacto?')) return;
+      await fetch(`/contacts/${id}`, { method: 'DELETE' });
+      if (editingId === id) resetForm();
+      loadContacts();
+    }
+
+    if (btn.dataset.action === 'edit') {
+      const res = await fetch(`/contacts/${id}`);
+      const contact = await res.json();
+      nameInput.value = contact.name || '';
+      phoneInput.value = contact.phone || '';
+      emailInput.value = contact.email || '';
+      editingId = id;
+      submitBtn.textContent = 'Guardar';
+      nameInput.focus();
+    }
+  });
+
+  function resetForm() {
+    form.reset();
+    editingId = null;
+    submitBtn.textContent = 'Agregar';
+  }
+
+  loadContacts();
+</script>
+</body>
+</html>
