@@ -11,7 +11,7 @@ function writeContacts(contacts) {
 
 function createContact(req, res) {
   const { name, phone, email } = req.body;
-  if (!name) {
+  if (!name || !name.trim()) {
     return res.status(400).json({ error: 'El campo name es obligatorio' });
   }
   const contacts = readContacts();
