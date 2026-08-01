@@ -1,13 +1,7 @@
 {
   "name": "crud-contact-list",
   "version": "1.0.0",
-  "description": "API CRUD de lista de contactos - Proyecto Git Flow",
   "main": "server.js",
-  "scripts": {
-    "start": "node server.js",
-    "dev": "node server.js"
-  },
-  "dependencies": {
-    "express": "^4.19.2"
-  }
+  "scripts": { "start": "node server.js" },
+  "dependencies": { "express": "^4.19.2" }
 }
